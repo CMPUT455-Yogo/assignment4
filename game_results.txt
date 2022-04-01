@@ -1,4 +1,4 @@
-player 1: flat_mc_player/nogo_flat_mc.py
-player 2: random_player/nogo_random.py
-player 1 wins 2
-player 2 wins 8
+player 1: random_player/nogo_random.py
+player 2: assignment3/NoGo.py
+player 1 wins: 4
+player 2 wins: 6

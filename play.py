@@ -4,7 +4,7 @@ import pexpect
 # path to the two players
 # player 1 plays first
 player1='random_player/nogo_random.py'
-player2='nogo4/nogo4.py' 
+player2='yogo/nogo4.py' 
 
 # stats for win/timeout
 # note that timeout is considered lost
@@ -123,7 +123,7 @@ def playSingleGame(alternative=False):
     print(f'Winner: {winner} Timeout: {istimeout}\n')
     return result,istimeout
 
-def playGames(numGame=1):
+def playGames(numGame=10):
     '''
     play the specified number of games with alternating turns
     '''
