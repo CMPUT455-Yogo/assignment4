@@ -7,6 +7,7 @@ in the Deep-Go project by Isaac Henrion and Amos Storkey
 at the University of Edinburgh.
 """
 import traceback
+import signal
 from sys import stdin, stdout, stderr
 from board_util import (
     GoBoardUtil,
@@ -36,6 +37,7 @@ class GtpConnection:
         self.go_engine = go_engine
         self.board = board
         self.timelimit = 30
+        signal.signal(signal.SIGALRM, self.handler)
         self.commands = {
             "protocol_version": self.protocol_version_cmd,
             "quit": self.quit_cmd,
@@ -51,6 +53,7 @@ class GtpConnection:
             "play": self.play_cmd,
             "gogui-rules_legal_moves":self.gogui_rules_legal_moves_cmd,
             "gogui-rules_final_result":self.gogui_rules_final_result_cmd,
+            "num_sim": self.num_sim_cmd,
             "timelimit": self.time_limit_cmd
         }
 
@@ -101,7 +104,7 @@ class GtpConnection:
         args = elements[1:]
         if self.has_arg_error(command_name, len(args)):
             return
-        
+        # print(command_name in self.commands, command_name)
         if command_name in self.commands:
             try:
                 self.commands[command_name](args)
@@ -327,8 +330,17 @@ class GtpConnection:
         board_color = args[0].lower()
         color = color_to_int(board_color)
 
-        move = self.go_engine.get_move(self.board, color)
-    
+        try:
+            signal.alarm(self.timelimit)
+            self.sboard = self.board.copy()
+            move = self.go_engine.get_move(self.board, color)
+            self.board=self.sboard
+            signal.alarm(0)
+        except Exception as e:
+            # Time's up! Use the best move so far.
+            move=self.go_engine.get_best_move()
+
+        
         # no move to play on the board
         if move is None:
             self.respond('resign')
@@ -336,13 +348,19 @@ class GtpConnection:
 
         move_coord = point_to_coord(move, self.board.size)
         move_as_string = format_point(move_coord)
-
         if self.board.is_legal(move, color):
             # play that move
             self.board.play_move(move, color)
             self.respond(move_as_string)
         else:
             self.respond("Illegal move: {}".format(move_as_string))
+
+    def num_sim_cmd(self, args):
+        '''
+        set a new simulation number for the MC player
+        '''
+        self.go_engine.set_sim_num(int(args[0]))
+        self.respond()
     
     def time_limit_cmd(self, args):
         '''
@@ -351,6 +369,9 @@ class GtpConnection:
         self.timelimit = int(args[0])
         self.respond()
     
+    def handler(self, signum, fram):
+        self.board = self.sboard
+        raise Exception("unknown")
 
     """
     ==========================================================================
