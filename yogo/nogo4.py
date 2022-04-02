@@ -106,12 +106,14 @@ class NoGo:
             # select move to simulate
             move = None
 
-            # if toplay == color:
-            # index = self.select(self.all_stats[code], N)
-            index = np.random.randint(0,len(moves))
+            if toplay == color and N > 100:
+                index = self.select(self.all_stats[code], N)
+            else:
+                index = np.random.randint(0,len(moves))
             move = moves[index]
             # trace moves in simulation
-            trace.append((code,index))
+            if toplay == color:
+                trace.append((code,index))
             # else:
             #     move = GoBoardUtil.generate_random_move(board,color)
             

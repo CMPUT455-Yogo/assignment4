@@ -3,7 +3,7 @@ import pexpect
 
 # path to the two players
 # player 1 plays first
-player1='random_player/nogo_random.py'
+player1='ucb_player/nogo_ucb.py'
 player2='yogo/nogo4.py' 
 
 # stats for win/timeout
@@ -37,7 +37,7 @@ def setupPlayer(p):
     '''
     configure the players
     '''
-    p.sendline('boardsize 4')
+    p.sendline('boardsize 3')
     p.sendline('clear_board')
     p.sendline('timelimit {}'.format(TIMEOUT))
 
