@@ -48,6 +48,7 @@ class NoGo:
         self.C = coefficient
         self.best_move = None
         self.all_stats = {}
+        self.amaf = {} # RAVE: All Moves At First
     
     ################ Getters & Setters #########################
     def set_sim_num(self, new_num):
@@ -101,7 +102,8 @@ class NoGo:
             if len(moves) == 0:
                 break
 
-            self.all_stats[code] = np.zeros((len(moves),2))
+            if code not in self.all_stats:
+                self.all_stats[code] = np.zeros((len(moves),2))
 
             # select move to simulate
             move = None
