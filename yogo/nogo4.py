@@ -87,7 +87,7 @@ class NoGo:
 
         return max_index
     
-    def play_game_trace(self, board:GoBoard, color:int):
+    def play_game_trace(self, board:GoBoard, color:int, N:int):
         """
         Run a simulation game to the end from the current board
         """
@@ -107,7 +107,7 @@ class NoGo:
             move = None
 
             if toplay == color:
-                index = self.select(self.all_stats[code], np.exp(1))
+                index = self.select(self.all_stats[code], N)
             else:
                 index = np.random.randint(0,len(moves))
             move = moves[index]
@@ -135,14 +135,14 @@ class NoGo:
                 self.all_stats[c][i][0] += 1
         return winner
             
-    def simulate(self, board:GoBoard, move, toplay):
+    def simulate(self, board:GoBoard, move, toplay, N):
         """
         Simulate a game for a given move.
         """
         cboard = board.copy()
         cboard.play_move(move, toplay)
         # return play_game(cboard)
-        return self.play_game_trace(cboard, toplay)
+        return self.play_game_trace(cboard, toplay, N)
     
     def run_ucb(self, board:GoBoard, moves, color):
         '''
@@ -164,7 +164,7 @@ class NoGo:
             index = self.select(self.all_stats[code], N)
             move = moves[index]
             # simulate the game
-            winner = self.simulate(board, move, color)
+            winner = self.simulate(board, move, color, N)
             # print(N, self.all_stats)
             if winner == color:
                 # increment both countings
