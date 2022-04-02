@@ -36,7 +36,7 @@ class GtpConnection:
         self._debug_mode = debug_mode
         self.go_engine = go_engine
         self.board = board
-        self.timelimit = 30
+        self.timelimit = 29
         signal.signal(signal.SIGALRM, self.handler)
         self.commands = {
             "protocol_version": self.protocol_version_cmd,
@@ -338,6 +338,7 @@ class GtpConnection:
             signal.alarm(0)
         except Exception as e:
             # Time's up! Use the best move so far.
+            print(e)
             move=self.go_engine.get_best_move()
 
         

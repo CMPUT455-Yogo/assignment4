@@ -47,7 +47,7 @@ class NoGo:
         self.sim = sim_num
         self.C = coefficient
         self.best_move = None
-    
+        self.all_stats = {}
     
     ################ Getters & Setters #########################
     def set_sim_num(self, new_num):
@@ -84,16 +84,63 @@ class NoGo:
             if ucb > max_val:
                 max_val = ucb
                 max_index = index
-        
+
         return max_index
+    
+    def play_game_trace(self, board:GoBoard, color:int, N:int):
+        """
+        Run a simulation game to the end from the current board
+        """
+        trace = []
+        while True:
+            # play a random move for the current player
+            toplay = board.current_player
+            code = str(board.board)
+            moves = GoBoardUtil.generate_legal_moves(board, toplay)
+            # print(moves)
+            if len(moves) == 0:
+                break
+
+            self.all_stats[code] = np.zeros((len(moves),2))
+
+            # select move to simulate
+            move = None
+
+            # if toplay == color:
+            # index = self.select(self.all_stats[code], N)
+            index = np.random.randint(0,len(moves))
+            move = moves[index]
+            # trace moves in simulation
+            trace.append((code,index))
+            # else:
+            #     move = GoBoardUtil.generate_random_move(board,color)
             
-    def simulate(self, board:GoBoard, move, toplay):
+            board.play_move(move, toplay)
+            # print(move)
+            if move is None:
+                break
+                
+        # get winner
+        winner = GoBoardUtil.opponent(toplay)
+
+        if winner == color:
+            for c,i in trace:
+                # increment both countings
+                self.all_stats[c][i] += 1
+        else:
+            for c,i in trace:
+                # only increment number of selection
+                self.all_stats[c][i][0] += 1
+        return winner
+            
+    def simulate(self, board:GoBoard, move, toplay, N):
         """
         Simulate a game for a given move.
         """
         cboard = board.copy()
         cboard.play_move(move, toplay)
-        return play_game(cboard)
+        # return play_game(cboard)
+        return self.play_game_trace(cboard, toplay, N)
     
     def run_ucb(self, board:GoBoard, moves, color):
         '''
@@ -106,23 +153,26 @@ class NoGo:
         total_sim = self.sim*len(moves)
         # first dimension: corresponding the moves
         # second dimension: [number of selection, total wins so far]
-        stats = np.zeros((len(moves),2))
+        code = str(board.board)
+        if code not in self.all_stats:
+            self.all_stats[code] = np.zeros((len(moves),2))
 
         for N in range(1, total_sim+1):
             # select move to simulate
-            index = self.select(stats, N)
+            index = self.select(self.all_stats[code], N)
             move = moves[index]
             # simulate the game
-            winner = self.simulate(board, move, color)
+            winner = self.simulate(board, move, color, N)
+            # print(N, self.all_stats)
             if winner == color:
                 # increment both countings
-                stats[index] += 1
+                self.all_stats[code][index] += 1
             else:
                 # only increment number of selection
-                stats[index][0] += 1
+                self.all_stats[code][index][0] += 1
             
             # move index with maximum count
-            max_index = np.argmax(stats,axis=0)[0]
+            max_index = np.argmax(self.all_stats[code],axis=0)[0]
             # update best move
             self.best_move = moves[max_index]
 
