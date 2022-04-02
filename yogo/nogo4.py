@@ -6,8 +6,25 @@ from gtp_connection import GtpConnection
 from board_util import GoBoardUtil
 from board import GoBoard
 import numpy as np
-from simulation_util import writeMoves, select_best_move
-from ucb import runUcb
+
+##################### Global Helper Method##############
+def play_game(board:GoBoard):
+    """
+    Run a simulation game to the end fromt the current board
+    """
+    while True:
+        # play a random move for the current player
+        color = board.current_player
+        move = GoBoardUtil.generate_random_move(board,color)
+        board.play_move(move, color)
+
+        # current player is passing
+        if move is None:
+            break
+
+    # get winner
+    winner = GoBoardUtil.opponent(color)
+    return winner
 #################################################
 '''
 This is a uniform random NoGo player served as the starter code
@@ -27,129 +44,117 @@ class NoGo:
         """
         self.name = "Go0"
         self.version = 1.0
-        self.use_ucb = True
-        self.random_simulation = True
-        self.use_pattern = not self.random_simulation
-        self.weights = self.get_weights()
-        self.limit = 100000000
-        self.sim = 8
+        self.sim = sim_num
+        self.C = coefficient
+        self.best_move = None
+    
+    
+    ################ Getters & Setters #########################
+    def set_sim_num(self, new_num):
+        '''
+        set new number of simulations
+        '''
+        self.sim = new_num
+    
+    def get_best_move(self):
+        return self.best_move
+    ############################################################
+    
+    ############### Core UCB Monte Carlo Logics ################
+    def compute_ucb(self, num, val, N):
+        '''
+        calculate the upper confidence bound
+        '''
+        q = val/num
+        return q + self.C*np.sqrt(np.log(N)/num)
 
-
-    # def get_move(self, board, color):
-    #     return GoBoardUtil.generate_random_move(board, color, 
-    #                                             use_eye_filter=False)
-
-    def get_weights(self):
-        f = open("./assignment3/weights.txt", "r")
-        content = f.read().split("\n")
-        weights = {}
-        for i in range(len(content) - 1):
-                item = content[i].split()
-                weights[int(item[0])] = float(item[1])
-        return weights
-
-    def computeProbabilities(self, board, color):
-        emptyPoints = board.get_empty_points()
-        moves = []
-        weights = []
-        probabilities = []
-        sum = 0
-        for p in emptyPoints:
-            if board.is_legal(p, color):
-                moves.append(p)
-        if not moves:
-            return [], []
-        if self.random_simulation:
-            return moves, [1/len(moves)] * len(moves)
-        for move in moves:
-            weight = self.computeWeight(board, move)
-            sum += weight
-            weights.append(weight)
-        for i in range(len(moves)):
-            probabilities.append(weights[i] / sum)
-        return moves, probabilities
-
-    def computeWeight(self, board, move):
-        neighbors = [move + board.NS - 1, move + board.NS, move + board.NS + 1, move - 1, move + 1, move - board.NS - 1, move - board.NS, move - board.NS + 1]
-        s = 0
-        for i in range(len(neighbors)):
-            s += board.board[neighbors[i]] * 4**i
-        w = self.weights[s]
-        return w
-
-    def generate_pattern_move(self, board, color):
-        moves, probabilities = self.computeProbabilities(board, color)
-        if len(moves) == 0:
-            return None
-        m = np.random.choice(moves, p=probabilities)
-        return m
-
-    def simulate(self, board, move, toplay):
+    
+    def select(self, stats, N):
+        '''
+        select the move to simulate based on the stats
+        '''
+        max_val = 0
+        max_index = 0
+        for index, (num, val) in enumerate(stats):
+            # never selected so far
+            if num == 0:
+                return index
+            # find the max ucb value and index
+            ucb = self.compute_ucb(num, val, N)
+            if ucb > max_val:
+                max_val = ucb
+                max_index = index
+        
+        return max_index
+            
+    def simulate(self, board:GoBoard, move, toplay):
         """
-        Run a simulated game for a given move.
+        Simulate a game for a given move.
         """
         cboard = board.copy()
         cboard.play_move(move, toplay)
-        opp = GoBoardUtil.opponent(toplay)
-        return self.playGame(cboard, opp)
+        return play_game(cboard)
+    
+    def run_ucb(self, board:GoBoard, moves, color):
+        '''
+        Run the flat MC algorithm for N = #moves x #simulations times
+        with UCB for move selection at each iteration.
 
-    def simulateMove(self, board, move, toplay):
-        """
-        Run simulations for a given move.
-        """
-        wins = 0
-        for _ in range(self.sim):
-            result = self.simulate(board, move, toplay)
-            if result == toplay:
-                wins += 1
-        return wins
+        The move to act in the real game is the one with the max
+        simulation count.
+        '''
+        total_sim = self.sim*len(moves)
+        # first dimension: corresponding the moves
+        # second dimension: [number of selection, total wins so far]
+        stats = np.zeros((len(moves),2))
 
-    def get_move(self, board, color):
+        for N in range(1, total_sim+1):
+            # select move to simulate
+            index = self.select(stats, N)
+            move = moves[index]
+            # simulate the game
+            winner = self.simulate(board, move, color)
+            if winner == color:
+                # increment both countings
+                stats[index] += 1
+            else:
+                # only increment number of selection
+                stats[index][0] += 1
+            
+            # move index with maximum count
+            max_index = np.argmax(stats,axis=0)[0]
+            # update best move
+            self.best_move = moves[max_index]
+
+        return self.best_move
+    
+    ###############################################################
+
+    def get_move(self, board:GoBoard, color:int):
         """
         Run one-ply MC simulations to get a move to play.
         """
         cboard = board.copy()
-        emptyPoints = board.get_empty_points()
-        moves = []
-        for p in emptyPoints:
-            if board.is_legal(p, color):
-                moves.append(p)
+        cboard.current_player = color
+        moves = GoBoardUtil.generate_legal_moves(cboard, color)
+
+        # no legal moves left
         if not moves:
             return None
-        # moves.append(None)
-        if self.use_ucb:
-            C = 0.4  # sqrt(2) is safe, this is more aggressive
-            best = runUcb(self, cboard, C, moves, color)
-            return best
+        # only one legal move to play, there is no other choice
+        elif len(moves) == 1:
+            return moves[0]
+        # run ucb MC to determine the best move at present
         else:
-            moveWins = []
-            for move in moves:
-                wins = self.simulateMove(cboard, move, color)
-                moveWins.append(wins)
-            writeMoves(cboard, moves, moveWins, self.sim)
-            return select_best_move(board, moves, moveWins)
-
-    def playGame(self, board, color):
-        """
-        Run a simulation game.
-        """
-        for _ in range(self.limit):
-            color = board.current_player
-            if self.random_simulation:
-                move = GoBoardUtil.generate_random_move(board, color)
-            else:
-                move = self.generate_pattern_move(board, color)
-            if move == None:
-                break
-            board.play_move(move, color)
-        return GoBoardUtil.opponent(color)
+            best = self.run_ucb(board, moves, color)
+            return best
         
 def run():
     """
     start the gtp connection and wait for commands.
     """
     board = GoBoard(7)
-    con = GtpConnection(NoGo(), board)
+    con = GtpConnection(UCB(sim_num=100), board)
     con.start_connection()
 
 if __name__ == "__main__":

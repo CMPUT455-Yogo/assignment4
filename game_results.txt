@@ -1,4 +1,4 @@
-player 1: random_player/nogo_random.py
-player 2: assignment3/NoGo.py
-player 1 wins: 4
-player 2 wins: 6
+player 1: ucb_player/nogo_ucb.py
+player 2: yogo/nogo4.py
+player 1 wins: 5
+player 2 wins: 0
