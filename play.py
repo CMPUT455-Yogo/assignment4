@@ -37,7 +37,7 @@ def setupPlayer(p):
     '''
     configure the players
     '''
-    p.sendline('boardsize 3')
+    p.sendline('boardsize 4')
     p.sendline('clear_board')
     p.sendline('timelimit {}'.format(TIMEOUT))
 
@@ -123,7 +123,7 @@ def playSingleGame(alternative=False):
     print(f'Winner: {winner} Timeout: {istimeout}\n')
     return result,istimeout
 
-def playGames(numGame=5):
+def playGames(numGame=10):
     '''
     play the specified number of games with alternating turns
     '''
