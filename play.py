@@ -37,7 +37,7 @@ def setupPlayer(p):
     '''
     configure the players
     '''
-    p.sendline('boardsize 4')
+    p.sendline('boardsize 7')
     p.sendline('clear_board')
     p.sendline('timelimit {}'.format(TIMEOUT))
 
