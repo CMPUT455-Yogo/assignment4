@@ -31,7 +31,7 @@ This is a uniform random NoGo player served as the starter code
 for your (possibly) stronger player. Good luck!
 '''
 class NoGo:
-    def __init__(self):
+    def __init__(self,sim_num,coefficient = 0.4):
         """
         NoGo player that selects moves randomly from the set of legal moves.
 
@@ -154,7 +154,7 @@ def run():
     start the gtp connection and wait for commands.
     """
     board = GoBoard(7)
-    con = GtpConnection(UCB(sim_num=100), board)
+    con = GtpConnection(NoGo(sim_num=100), board)
     con.start_connection()
 
 if __name__ == "__main__":
