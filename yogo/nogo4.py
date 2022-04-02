@@ -94,47 +94,33 @@ class NoGo:
         """
         trace = []
         while True:
-            # play a random move for the current player
             toplay = board.current_player
             code = str(board.board)
             moves = GoBoardUtil.generate_legal_moves(board, toplay)
-            # print(moves)
             if len(moves) == 0:
                 break
-
+            # initialize stats
             if code not in self.all_stats:
                 self.all_stats[code] = np.zeros((len(moves),2))
-
             # select move to simulate
-            move = None
-
-            if toplay == color:
-                index = self.select(self.all_stats[code], N)
-            else:
-                index = np.random.randint(0,len(moves))
+            index = self.select(self.all_stats[code], N)
             move = moves[index]
             # trace moves in simulation
-            if toplay == color:
-                trace.append((code,index))
-            # else:
-            #     move = GoBoardUtil.generate_random_move(board,color)
-            
+            trace.append((toplay, code, move, index))
             board.play_move(move, toplay)
-            # print(move)
             if move is None:
                 break
                 
         # get winner
         winner = GoBoardUtil.opponent(toplay)
-
-        if winner == color:
-            for c,i in trace:
+        # update stats
+        for color, code, move, index in trace:
+            if winner == color:
                 # increment both countings
-                self.all_stats[c][i] += 1
-        else:
-            for c,i in trace:
-                # only increment number of selection
-                self.all_stats[c][i][0] += 1
+                self.all_stats[code][index] += 1
+            else:
+                # increment both countings
+                self.all_stats[code][index] += 1
         return winner
             
     def simulate(self, board:GoBoard, move, toplay, N):
