@@ -1,4 +1,4 @@
 player 1: ucb_player/nogo_ucb.py
 player 2: yogo/nogo4.py
-player 1 wins: 2
-player 2 wins: 8
+player 1 wins: 1
+player 2 wins: 9

@@ -6,6 +6,7 @@ from gtp_connection import GtpConnection
 from board_util import GoBoardUtil
 from board import GoBoard
 import numpy as np
+import pickle
 
 ##################### Global Helper Method##############
 def play_game(board:GoBoard):
@@ -47,8 +48,17 @@ class NoGo:
         self.sim = sim_num
         self.C = coefficient
         self.best_move = None
-        self.all_stats = {}
-        self.amaf = {} # RAVE: All Moves At First
+        
+
+        
+        try:
+            self.amaf = self.load_data('amaf') # RAVE: All Moves At First
+            self.all_stats = self.load_data('all_stats')
+        except:
+            self.all_stats = {}
+            self.amaf = {} # RAVE: All Moves At First
+        self.open_amaf = open("amaf", "wb")
+        self.open_all_stats = open("all_stats", "wb")
     
     ################ Getters & Setters #########################
     def set_sim_num(self, new_num):
@@ -188,6 +198,17 @@ class NoGo:
             # update best move
             self.best_move = moves[max_index]
 
+        
+        print(self.amaf)
+        self.open_amaf = open("amaf", "wb")
+        self.open_all_stats = open("all_stats", "wb")
+
+        pickle.dump(self.all_stats, self.open_all_stats)
+        pickle.dump(self.amaf, self.open_amaf)
+
+        self.open_all_stats.close()
+        self.open_amaf.close()
+
         return self.best_move
     
     ###############################################################
@@ -210,6 +231,13 @@ class NoGo:
         else:
             best = self.run_ucb(board, moves, color)
             return best
+
+    def load_data(self, file_name):
+        file = open(file_name, 'rb')
+        data = pickle.load(file)
+        file.close()
+        # print("loaded: \n" + file_name, data)
+        return data
         
 def run():
     """
