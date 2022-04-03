@@ -62,26 +62,33 @@ class NoGo:
     ############################################################
     
     ############### Core UCB Monte Carlo Logics ################
-    def compute_ucb(self, num, val, N):
+    def compute_ucb(self, num, val, N, amafN, amafV):
         '''
         calculate the upper confidence bound
         '''
         q = val/num
-        return q + self.C*np.sqrt(np.log(N)/num)
+        rave = amafV / amafN
+        #beta = amafN / (amafN + num + 4 * amafN * num * 0.25)
+        beta = np.sqrt(20 / (3 * N + 20))
+        return q * (1 - beta) + rave * beta + self.C*np.sqrt(np.log(N)/num)
 
     
-    def select(self, stats, N):
+    def select(self, stats, N, moves):
         '''
         select the move to simulate based on the stats
         '''
         max_val = 0
         max_index = 0
         for index, (num, val) in enumerate(stats):
+            if index == len(moves):                          # when index is the last one in stats, it is no longer a move
+                break
             # never selected so far
             if num == 0:
                 return index
             # find the max ucb value and index
-            ucb = self.compute_ucb(num, val, N)
+            move = moves[index]
+            amafN, amafV = self.amaf[move]
+            ucb = self.compute_ucb(num, val, N, amafN, amafV)
             if ucb > max_val:
                 max_val = ucb
                 max_index = index
@@ -101,10 +108,16 @@ class NoGo:
                 break
             # initialize stats
             if code not in self.all_stats:
-                self.all_stats[code] = np.zeros((len(moves),2))
+                self.all_stats[code] = np.zeros((len(moves) + 1,2))
+
+            self.all_stats[code][-1][0] += 1
             # select move to simulate
-            index = self.select(self.all_stats[code], N)
+            index = self.select(self.all_stats[code], self.all_stats[code][-1][0], moves)
             move = moves[index]
+
+            if move not in self.amaf:
+                self.amaf[move] = np.zeros(2)
+
             # trace moves in simulation
             trace.append((toplay, code, move, index))
             board.play_move(move, toplay)
@@ -118,9 +131,11 @@ class NoGo:
             if winner == color:
                 # increment both countings
                 self.all_stats[code][index] += 1
+                self.amaf[move] += 1
             else:
-                # increment both countings
-                self.all_stats[code][index] += 1
+                # only increment number of selection
+                self.all_stats[code][index][0] += 1
+                self.amaf[move][0] += 1
         return winner
             
     def simulate(self, board:GoBoard, move, toplay, N):
@@ -145,24 +160,31 @@ class NoGo:
         # second dimension: [number of selection, total wins so far]
         code = str(board.board)
         if code not in self.all_stats:
-            self.all_stats[code] = np.zeros((len(moves),2))
+            self.all_stats[code] = np.zeros((len(moves) + 1,2))
 
         for N in range(1, total_sim+1):
             # select move to simulate
-            index = self.select(self.all_stats[code], N)
+            self.all_stats[code][-1][0] += 1
+            index = self.select(self.all_stats[code], self.all_stats[code][-1][0], moves)
             move = moves[index]
+
+
+            if move not in self.amaf:
+                self.amaf[move] = np.zeros(2)
+
             # simulate the game
-            winner = self.simulate(board, move, color, N)
+            winner = self.simulate(board, move, color, self.all_stats[code][-1][0])
             # print(N, self.all_stats)
             if winner == color:
                 # increment both countings
                 self.all_stats[code][index] += 1
+                self.amaf[move] += 1
             else:
                 # only increment number of selection
                 self.all_stats[code][index][0] += 1
-            
+                self.amaf[move][0] += 1
             # move index with maximum count
-            max_index = np.argmax(self.all_stats[code],axis=0)[0]
+            max_index = np.argmax(self.all_stats[code][0: len(moves)],axis=0)[0]
             # update best move
             self.best_move = moves[max_index]
 
@@ -193,7 +215,7 @@ def run():
     """
     start the gtp connection and wait for commands.
     """
-    board = GoBoard(7)
+    board = GoBoard(4)
     con = GtpConnection(NoGo(sim_num=100), board)
     con.start_connection()
 
