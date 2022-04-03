@@ -2,6 +2,7 @@
 # /usr/bin/python3
 # Set the path to your python3 above
 
+from selectors import SelectorKey
 from gtp_connection import GtpConnection
 from board_util import GoBoardUtil
 from board import GoBoard
@@ -50,7 +51,11 @@ class NoGo:
         self.best_move = None
         self.all_stats = {}
         self.amaf = {} # RAVE: All Moves At First
+        # self.all_stats = self.load_data('all_stats')
+        # self.amaf = self.load_data('amaf') # RAVE: All Moves At First
         self.weights = self.get_weights()
+        self.open_all_stats = open("./yogo/all_stats", "wb")
+        self.open_amaf = open("./yogo/amaf", "wb")
     
     ################ Getters & Setters #########################
     def set_sim_num(self, new_num):
@@ -73,7 +78,7 @@ class NoGo:
         rave = amafV / amafN
         #beta = amafN / (amafN + num + 4 * amafN * num * 0.25)
         beta = np.sqrt(20 / (3 * N + 20))
-        return q * (1 - beta) + rave * beta + self.C*np.sqrt(np.log(N)/num)
+        return q * (1 - beta) + rave * beta + p* self.C*np.sqrt(np.log(N)/num)
 
     
     def select(self, stats, N, moves, board, color):
@@ -140,6 +145,12 @@ class NoGo:
                 # only increment number of selection
                 self.all_stats[code][index][0] += 1
                 self.amaf[move][0] += 1
+
+            self.open_all_stats.truncate()
+            self.open_amaf.truncate()
+            pickle.dump(self.amaf, self.open_amaf)
+            pickle.dump(self.all_stats, self.open_all_stats)
+
         return winner
             
     def simulate(self, board:GoBoard, move, toplay, N):
@@ -253,6 +264,14 @@ class NoGo:
             s += board.board[neighbors[i]] * 4**i
         w = self.weights[s]
         return w
+
+    def load_data(self, file_name):
+        file = open('./yogo/'+file_name, 'rb')
+        data = pickle.load(file)
+        file.close()
+        print("loaded: \n" + file_name, data)
+        return data
+        
         
 def run():
     """
