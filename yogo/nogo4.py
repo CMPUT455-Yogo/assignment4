@@ -6,6 +6,7 @@ from gtp_connection import GtpConnection
 from board_util import GoBoardUtil
 from board import GoBoard
 import numpy as np
+import pickle
 
 ##################### Global Helper Method##############
 def play_game(board:GoBoard):
@@ -49,6 +50,7 @@ class NoGo:
         self.best_move = None
         self.all_stats = {}
         self.amaf = {} # RAVE: All Moves At First
+        self.weights = self.get_weights()
     
     ################ Getters & Setters #########################
     def set_sim_num(self, new_num):
@@ -62,10 +64,11 @@ class NoGo:
     ############################################################
     
     ############### Core UCB Monte Carlo Logics ################
-    def compute_ucb(self, num, val, N, amafN, amafV):
+    def compute_ucb(self, num, val, N, amafN, amafV, p):
         '''
         calculate the upper confidence bound
         '''
+
         q = val/num
         rave = amafV / amafN
         #beta = amafN / (amafN + num + 4 * amafN * num * 0.25)
@@ -73,7 +76,7 @@ class NoGo:
         return q * (1 - beta) + rave * beta + self.C*np.sqrt(np.log(N)/num)
 
     
-    def select(self, stats, N, moves):
+    def select(self, stats, N, moves, board, color):
         '''
         select the move to simulate based on the stats
         '''
@@ -88,7 +91,8 @@ class NoGo:
             # find the max ucb value and index
             move = moves[index]
             amafN, amafV = self.amaf[move]
-            ucb = self.compute_ucb(num, val, N, amafN, amafV)
+            knowledge_p = self.computeProbabilities(board, color, move)
+            ucb = self.compute_ucb(num, val, N, amafN, amafV, knowledge_p)
             if ucb > max_val:
                 max_val = ucb
                 max_index = index
@@ -112,7 +116,7 @@ class NoGo:
 
             self.all_stats[code][-1][0] += 1
             # select move to simulate
-            index = self.select(self.all_stats[code], self.all_stats[code][-1][0], moves)
+            index = self.select(self.all_stats[code], self.all_stats[code][-1][0], moves, board, toplay)
             move = moves[index]
 
             if move not in self.amaf:
@@ -165,7 +169,7 @@ class NoGo:
         for N in range(1, total_sim+1):
             # select move to simulate
             self.all_stats[code][-1][0] += 1
-            index = self.select(self.all_stats[code], self.all_stats[code][-1][0], moves)
+            index = self.select(self.all_stats[code], self.all_stats[code][-1][0], moves, board, color)
             move = moves[index]
 
 
@@ -210,6 +214,45 @@ class NoGo:
         else:
             best = self.run_ucb(board, moves, color)
             return best
+
+
+
+
+    
+    ###############################################################
+    def get_weights(self):
+        f = open("./yogo/weights.txt", "r")
+        content = f.read().split("\n")
+        weights = {}
+        for i in range(len(content) - 1):
+                item = content[i].split()
+                weights[int(item[0])] = float(item[1])
+        return weights
+
+    def computeProbabilities(self, board, color, target_move):
+        emptyPoints = board.get_empty_points()
+        moves = []
+        sum = 0
+        for p in emptyPoints:
+            if board.is_legal(p, color):
+                moves.append(p)
+        if not moves:
+            return [], []
+        # if self.random_simulation:
+        #     return moves, [1/len(moves)] * len(moves)
+        target_weight = self.computeWeight(board, target_move)
+        for move in moves:
+            weight = self.computeWeight(board, move)
+            sum += weight
+        return target_weight / sum
+
+    def computeWeight(self, board, move):
+        neighbors = [move + board.NS - 1, move + board.NS, move + board.NS + 1, move - 1, move + 1, move - board.NS - 1, move - board.NS, move - board.NS + 1]
+        s = 0
+        for i in range(len(neighbors)):
+            s += board.board[neighbors[i]] * 4**i
+        w = self.weights[s]
+        return w
         
 def run():
     """
