@@ -6,33 +6,14 @@ from gtp_connection import GtpConnection
 from board_util import GoBoardUtil
 from board import GoBoard
 import numpy as np
-import pickle
 
-##################### Global Helper Method##############
-def play_game(board:GoBoard):
-    """
-    Run a simulation game to the end fromt the current board
-    """
-    while True:
-        # play a random move for the current player
-        color = board.current_player
-        move = GoBoardUtil.generate_random_move(board,color)
-        board.play_move(move, color)
-
-        # current player is passing
-        if move is None:
-            break
-
-    # get winner
-    winner = GoBoardUtil.opponent(color)
-    return winner
 #################################################
 '''
 This is a uniform random NoGo player served as the starter code
 for your (possibly) stronger player. Good luck!
 '''
 class NoGo:
-    def __init__(self,sim_num,coefficient = 0.8):
+    def __init__(self,sim_num,coefficient = 0.4):
         """
         NoGo player that selects moves randomly from the set of legal moves.
 
@@ -50,11 +31,6 @@ class NoGo:
         self.best_move = None
         self.all_stats = {}
         self.amaf = {} # RAVE: All Moves At First
-        # self.all_stats = self.load_data('all_stats')
-        # self.amaf = self.load_data('amaf') # RAVE: All Moves At First
-        self.weights = self.get_weights()
-        # self.open_all_stats = open("./yogo/all_stats", "wb")
-        # self.open_amaf = open("./yogo/amaf", "wb")
     
     ################ Getters & Setters #########################
     def set_sim_num(self, new_num):
@@ -68,16 +44,16 @@ class NoGo:
     ############################################################
     
     ############### Core UCB Monte Carlo Logics ################
-    def compute_ucb(self, num, val, N, amafN, amafV, p):
+    def compute_ucb(self, num, val, N, amafN, amafV):
         '''
         calculate the upper confidence bound
         '''
+
         q = val/num
         rave = amafV / amafN
         #beta = amafN / (amafN + num + 4 * amafN * num * 0.25)
         beta = np.sqrt(20 / (3 * N + 20))
-        # print(q * (1 - beta), rave * beta, p * self.C * np.sqrt(np.log(N)/num))
-        return q * (1 - beta) + rave * beta + p * self.C * np.sqrt(np.log(N)/num)
+        return q * (1 - beta) + rave * beta + self.C*np.sqrt(np.log(N)/num)
 
     
     def select(self, stats, N, moves, board, color):
@@ -86,7 +62,6 @@ class NoGo:
         '''
         max_val = 0
         max_index = 0
-        knowledge_p = self.computeProbabilities(board, color, moves)
         for index, (num, val) in enumerate(stats):
             if index == len(moves):                          # when index is the last one in stats, it is no longer a move
                 break
@@ -96,7 +71,7 @@ class NoGo:
             # find the max ucb value and index
             move = moves[index]
             amafN, amafV = self.amaf[move]
-            ucb = self.compute_ucb(num, val, N, amafN, amafV, knowledge_p[index])
+            ucb = self.compute_ucb(num, val, N, amafN, amafV)
             if ucb > max_val:
                 max_val = ucb
                 max_index = index
@@ -144,12 +119,6 @@ class NoGo:
                 # only increment number of selection
                 self.all_stats[code][index][0] += 1
                 self.amaf[move][0] += 1
-
-            # self.open_all_stats.truncate()
-            # self.open_amaf.truncate()
-            # pickle.dump(self.amaf, self.open_amaf)
-            # pickle.dump(self.all_stats, self.open_all_stats)
-
         return winner
             
     def simulate(self, board:GoBoard, move, toplay, N):
@@ -221,45 +190,6 @@ class NoGo:
         else:
             best = self.run_ucb(board, moves, color)
             return best
-    
-    ###############################################################
-    def get_weights(self):
-        f = open("./yogo/weights.txt", "r")
-        content = f.read().split("\n")
-        f.close()
-        weights = {}
-        for i in range(len(content) - 1):
-                item = content[i].split()
-                weights[int(item[0])] = float(item[1])
-        return weights
-
-    def computeProbabilities(self, board, color, moves):
-        weights = []
-        probabilities = []
-        sum_p = 0
-        for move in moves:
-            weight = self.computeWeight(board, move)
-            sum_p += weight
-            weights.append(weight)
-        for i in range(len(moves)):
-            probabilities.append(weights[i] / sum_p)
-        return probabilities
-
-    def computeWeight(self, board, move):
-        neighbors = [move + board.NS - 1, move + board.NS, move + board.NS + 1, move - 1, move + 1, move - board.NS - 1, move - board.NS, move - board.NS + 1]
-        s = 0
-        for i in range(len(neighbors)):
-            s += board.board[neighbors[i]] * 4**i
-        w = self.weights[s]
-        return w
-
-    def load_data(self, file_name):
-        file = open('./yogo/'+file_name, 'rb')
-        data = pickle.load(file)
-        file.close()
-        print("loaded: \n" + file_name, data)
-        return data
-        
         
 def run():
     """
