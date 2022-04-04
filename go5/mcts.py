@@ -195,7 +195,11 @@ class MCTS(object):
         self.exploration = exploration
         self.simulation_policy = simulation_policy
         self.in_tree_knowledge = in_tree_knowledge
-        for n in range(num_simulation):
+        # more simulation when there is more moves to play
+        moves = GoBoardUtil.generate_legal_moves(board, toplay)
+        total_sim = num_simulation*len(moves)
+        
+        for n in range(total_sim):
             board_copy = board.copy()
             self._playout(board_copy, toplay)
         # choose a move that has the most visit

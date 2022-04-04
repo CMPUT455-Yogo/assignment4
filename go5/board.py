@@ -292,17 +292,9 @@ class GoBoard(object):
         This result is used in play_move to check for possible ko
         """
         if self._fast_liberty_check(nb_point):
-            return None
+            return False
         opp_block = self._block_of(nb_point)
-        if self._has_liberty(opp_block):
-            return None
-        captures = list(where1d(opp_block))
-        self.board[captures] = EMPTY
-        self.liberty_of[captures] = NULLPOINT
-        single_capture = None
-        if len(captures) == 1:
-            single_capture = nb_point
-        return single_capture
+        return not self._has_liberty(opp_block)
 
     def play_move(self, point, color):
         """

@@ -108,7 +108,7 @@ def parse_args():
     parser.add_argument(
         "--sim",
         type=int,
-        default=1000,
+        default=100,
         help="number of simulations per move, so total playouts=sim*legal_moves",
     )
     parser.add_argument(
