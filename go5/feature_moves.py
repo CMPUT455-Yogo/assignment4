@@ -11,6 +11,8 @@ from pattern_util import PatternUtil
 import numpy as np
 import random
 
+
+
 class FeatureMoves(object):
     @staticmethod
     def generate_moves(board):
@@ -51,35 +53,103 @@ class FeatureMoves(object):
             move_prob_tuple.append((m, probs[m]))
         return sorted(move_prob_tuple, key=lambda i: i[1], reverse=True)[0][0]
 
+    # @staticmethod
+    # def playGame(board, color, **kwargs):
+    #     """
+    #     Run a simulation game according to give parameters.
+    #     """
+        
+    #     # simulation_policy = kwargs.pop("random_simulation", "random")
+    #     use_pattern = kwargs.pop("use_pattern", True)
+    #     if kwargs:
+    #         raise TypeError("Unexpected **kwargs: %r" % kwargs)
+    #     nuPasses = 0
+    #     # for _ in range(limit):
+    #     while True:
+    #         color = board.current_player
+    #         # if simulation_policy == "random":
+    #         #     move = GoBoardUtil.generate_random_move(board, color)
+    #         # elif simulation_policy == "rulebased":
+    #         #     move = PatternUtil.generate_pattern_move(
+    #         #         board, use_pattern
+    #         #     )
+    #         # else:
+    #         #     assert simulation_policy == "prob"
+    #         move = FeatureMoves.generate_pattern_move(board, color)
+    #         board.play_move(move, color)
+    #         if move is None:
+    #             break
+                
+    #     # get winner
+    #     winner = GoBoardUtil.opponent(color)
+    #     return winner
+
+
+
     @staticmethod
     def playGame(board, color, **kwargs):
         """
-        Run a simulation game according to give parameters.
+        Run a simulation game.
         """
-        komi = kwargs.pop("komi", 0)
-        limit = kwargs.pop("limit", 1000)
-        simulation_policy = kwargs.pop("random_simulation", "random")
-        use_pattern = kwargs.pop("use_pattern", True)
-        check_selfatari = kwargs.pop("check_selfatari", True)
-        if kwargs:
-            raise TypeError("Unexpected **kwargs: %r" % kwargs)
-        nuPasses = 0
-        # for _ in range(limit):
         while True:
             color = board.current_player
-            if simulation_policy == "random":
-                move = GoBoardUtil.generate_random_move(board, color)
-            elif simulation_policy == "rulebased":
-                move = PatternUtil.generate_move_with_filter(
-                    board, use_pattern, check_selfatari
-                )
-            else:
-                assert simulation_policy == "prob"
-                move = FeatureMoves.generate_move(board)
-            board.play_move(move, color)
-            if move is None:
+            # if self.random_simulation:
+            #     move = GoBoardUtil.generate_random_move(board, color, True)
+            # else:
+            move = FeatureMoves.generate_pattern_move(board, color)
+            if move == None:
                 break
-                
-        # get winner
-        winner = GoBoardUtil.opponent(color)
-        return winner
+            board.play_move(move, color)
+        return GoBoardUtil.opponent(color)
+
+    @staticmethod
+    def generate_pattern_move(board, color):
+        moves, probabilities = FeatureMoves.computeProbabilities(board, color)
+        if len(moves) == 0:
+            return None
+        m = np.random.choice(moves, p=probabilities)
+        return m
+
+    @staticmethod
+    def computeProbabilities(board, color):
+        emptyPoints = board.get_empty_points()
+        moves = []
+        weights = []
+        probabilities = []
+        sum = 0
+        for p in emptyPoints:
+            if board.is_legal(p, color):
+                moves.append(p)
+        if not moves:
+            return [], []
+        # if self.random_simulation:
+        #     return moves, [1/len(moves)] * len(moves)
+        for move in moves:
+            weight = FeatureMoves.computeWeight(board, move)
+            sum += weight
+            weights.append(weight)
+        for i in range(len(moves)):
+            probabilities.append(weights[i] / sum)
+        return moves, probabilities
+
+    @staticmethod
+    def computeWeight(board, move):
+        neighbors = [move + board.NS - 1, move + board.NS, move + board.NS + 1, move - 1, move + 1, move - board.NS - 1, move - board.NS, move - board.NS + 1]
+        s = 0
+        for i in range(len(neighbors)):
+            s += board.board[neighbors[i]] * 4**i
+        # weights = FeatureMoves.get_weights()
+        w = weights[s]
+        return w
+
+    @staticmethod
+    def get_weights():
+        f = open("go5/weights.txt", "r")
+        content = f.read().split("\n")
+        weights = {}
+        for i in range(len(content) - 1):
+                item = content[i].split()
+                weights[int(item[0])] = float(item[1])
+        return weights
+
+weights = FeatureMoves.get_weights()
