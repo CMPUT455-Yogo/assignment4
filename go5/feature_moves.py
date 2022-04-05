@@ -53,39 +53,6 @@ class FeatureMoves(object):
             move_prob_tuple.append((m, probs[m]))
         return sorted(move_prob_tuple, key=lambda i: i[1], reverse=True)[0][0]
 
-    # @staticmethod
-    # def playGame(board, color, **kwargs):
-    #     """
-    #     Run a simulation game according to give parameters.
-    #     """
-        
-    #     # simulation_policy = kwargs.pop("random_simulation", "random")
-    #     use_pattern = kwargs.pop("use_pattern", True)
-    #     if kwargs:
-    #         raise TypeError("Unexpected **kwargs: %r" % kwargs)
-    #     nuPasses = 0
-    #     # for _ in range(limit):
-    #     while True:
-    #         color = board.current_player
-    #         # if simulation_policy == "random":
-    #         #     move = GoBoardUtil.generate_random_move(board, color)
-    #         # elif simulation_policy == "rulebased":
-    #         #     move = PatternUtil.generate_pattern_move(
-    #         #         board, use_pattern
-    #         #     )
-    #         # else:
-    #         #     assert simulation_policy == "prob"
-    #         move = FeatureMoves.generate_pattern_move(board, color)
-    #         board.play_move(move, color)
-    #         if move is None:
-    #             break
-                
-    #     # get winner
-    #     winner = GoBoardUtil.opponent(color)
-    #     return winner
-
-
-
     @staticmethod
     def playGame(board, color, **kwargs):
         """
