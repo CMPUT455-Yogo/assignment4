@@ -1,4 +1,4 @@
-player 1: go5/Go5.py
+player 1: ucb_player_rave/nogo_ucb.py
 player 2: ucb_player/nogo_ucb.py
-player 1 wins: 6
-player 2 wins: 0
+player 1 wins: 4
+player 2 wins: 2
